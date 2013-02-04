@@ -4784,10 +4784,10 @@ WYMeditor.editor.prototype.bindEvents = function () {
         $html_val;
 
     // Handle click events on tools buttons
-    jQuery(this._box).find(this._options.toolSelector).click(function () {
+    jQuery(this._box).find(this._options.toolSelector).click(function (e) {
+				e.preventDefault();
         wym._iframe.contentWindow.focus(); //See #154
         wym.exec(jQuery(this).attr(WYMeditor.NAME));
-        return false;
     });
 
     // Handle click events on containers buttons
@@ -5332,6 +5332,7 @@ WYMeditor.editor.prototype.update = function () {
 WYMeditor.editor.prototype.fixBodyHtml = function () {
     this.fixDoubleBr();
     this.spaceBlockingElements();
+		this.fixCurrentDiv();
 };
 
 /**
@@ -5433,6 +5434,20 @@ WYMeditor.editor.prototype.fixDoubleBr = function () {
 };
 
 /**
+editor.fixCurrentDiv
+====================
+If the caret is currently on a DIV node, for whatever reason,
+change it into a P. FIXME: DIVs shouldn't be created at all in
+the first place.
++*/
+
+WYMeditor.editor.prototype.fixCurrentDiv = function () {
+	var node = this.selected();
+ 	if (node && node.tagName.toLowerCase() === 'div')
+ 		this.switchTo(node, 'P');
+}
+
+/**
     editor.dialog
     =============
 
@@ -5440,13 +5455,13 @@ WYMeditor.editor.prototype.fixDoubleBr = function () {
 */
 WYMeditor.editor.prototype.dialog = function (dialogType, dialogFeatures, bodyHtml) {
     var features = dialogFeatures || this._wym._options.dialogFeatures,
-        wDialog = window.open('', 'dialog', features),
         sBodyHtml,
         h = WYMeditor.Helper,
         dialogHtml,
         doc;
-
-    if (wDialog) {
+				//--PAUL--wDialog = window.open('', 'dialog', features),
+		
+    //--PAUL--if (wDialog) {
         sBodyHtml = "";
 
         switch (dialogType) {
@@ -5515,11 +5530,49 @@ WYMeditor.editor.prototype.dialog = function (dialogType, dialogFeatures, bodyHt
         );
 
         dialogHtml = this.replaceStrings(dialogHtml);
+				
+        //---PAUL--- doc = wDialog.document;
+				//---PAUL--- doc.write(dialogHtml);
+        //---PAUL--- doc.close();
+       	$("body").append(dialogHtml);
+				var wym = this;
+				$(".modal:last").modal("show").on("hidden", function(){
+					$(this).remove();
+				}).on("shown", function(){
+					var selected = wym.selected;
+			    // ensure that we select the link to populate the fields
+			    if (selected && selected.tagName &&
+			            selected.tagName.toLowerCase !== WYMeditor.A) {
+			        selected = jQuery(selected).parentsOrSelf(WYMeditor.A);
+			    }
+			    // fix MSIE selection if link image has been clicked
+			    if (!selected && wym._selected_image) {
+			        selected = jQuery(wym._selected_image).parentsOrSelf(WYMeditor.A);
+			    }
+					// FIT IN HERE TEXTS
+					$(this).find("form").submit(function(e){
+						e.preventDefault();
+						var sUrl = jQuery(wym._options.hrefSelector).val(),
+								sStamp = sStamp = wym.uniqueStamp(),
+		            link;
+		        if (sUrl.length > 0) {
 
-        doc = wDialog.document;
-        doc.write(dialogHtml);
-        doc.close();
-    }
+		            if (selected[0] && selected[0].tagName.toLowerCase() === WYMeditor.A) {
+		                link = selected;
+		            } else {
+		                wym._exec(WYMeditor.CREATE_LINK, sStamp);
+		                link = jQuery("a[href=" + sStamp + "]", wym._doc.body);
+		            }
+
+		            link.attr(WYMeditor.HREF, sUrl);
+		            //link.attr(WYMeditor.TITLE, jQuery(wym._options.titleSelector).val());
+		            //link.attr(WYMeditor.REL, jQuery(wym._options.relSelector).val());
+								link.attr("target", jQuery(wym._options.relSelector).val());
+		        }
+		        $(this).parents(".modal").modal("hide");
+					});
+				});
+    //---PAUL---}
 };
 
 /**
