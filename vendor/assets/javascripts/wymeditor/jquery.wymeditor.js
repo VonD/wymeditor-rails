@@ -4631,8 +4631,6 @@ WYMeditor.editor.prototype.init = function () {
     }
 
     if (WymClass === false) {
-	
-				console.log(jQuery.browser);
         return;
     }
 
@@ -4793,9 +4791,9 @@ WYMeditor.editor.prototype.bindEvents = function () {
     });
 
     // Handle click events on containers buttons
-    jQuery(this._box).find(this._options.containerSelector).click(function () {
+    jQuery(this._box).find(this._options.containerSelector).click(function (e) {
+				e.preventDefault()
         wym.container(jQuery(this).attr(WYMeditor.NAME));
-        return false;
     });
 
     // Handle keyup event on html value: set the editor value
@@ -7876,7 +7874,6 @@ WYMeditor.WymClassSafari.prototype._exec = function (cmd, param) {
             param = _param.html();
         }
     }
-
     if (param) {
         this._doc.execCommand(cmd, '', param);
     } else {
