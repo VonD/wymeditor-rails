@@ -5458,16 +5458,52 @@ WYMeditor.editor.prototype.dialog = function (dialogType, dialogFeatures, bodyHt
         sBodyHtml,
         h = WYMeditor.Helper,
         dialogHtml,
+				open_callback,
         doc;
 				//--PAUL--wDialog = window.open('', 'dialog', features),
 		
     //--PAUL--if (wDialog) {
         sBodyHtml = "";
+				var wym = this;
 
         switch (dialogType) {
 
         case (WYMeditor.DIALOG_LINK):
             sBodyHtml = this._options.dialogLinkHtml;
+						open_callback = function(modal){
+							var selected = wym.selected;
+					    // ensure that we select the link to populate the fields
+					    if (selected && selected.tagName &&
+					            selected.tagName.toLowerCase !== WYMeditor.A) {
+					        selected = jQuery(selected).parentsOrSelf(WYMeditor.A);
+					    }
+					    // fix MSIE selection if link image has been clicked
+					    if (!selected && wym._selected_image) {
+					        selected = jQuery(wym._selected_image).parentsOrSelf(WYMeditor.A);
+					    }
+							// FIT IN HERE TEXTS
+							$(modal).find("form").submit(function(e){
+								e.preventDefault();
+								var sUrl = jQuery(wym._options.hrefSelector).val(),
+										sStamp = sStamp = wym.uniqueStamp(),
+				            link;
+				        if (sUrl.length > 0) {
+
+				          if (selected[0] && selected[0].tagName.toLowerCase() === WYMeditor.A) {
+				              link = selected;
+				          } else {
+				              wym._exec(WYMeditor.CREATE_LINK, sStamp);
+				              link = jQuery("a[href=" + sStamp + "]", wym._doc.body);
+				          }
+
+				          link.attr(WYMeditor.HREF, sUrl);
+				          //link.attr(WYMeditor.TITLE, jQuery(wym._options.titleSelector).val());
+				          //link.attr(WYMeditor.REL, jQuery(wym._options.relSelector).val());
+									link.attr("target", jQuery(wym._options.relSelector).val());
+				        }
+				        $(this).parents(".modal").modal("hide");
+							});
+						};
             break;
         case (WYMeditor.DIALOG_IMAGE):
             sBodyHtml = this._options.dialogImageHtml;
@@ -5477,6 +5513,14 @@ WYMeditor.editor.prototype.dialog = function (dialogType, dialogFeatures, bodyHt
             break;
         case (WYMeditor.DIALOG_PASTE):
             sBodyHtml = this._options.dialogPasteHtml;
+						open_callback = function(modal){
+							$(modal).find("form").submit(function(e){
+								e.preventDefault();
+								var sText = jQuery(wym._options.textSelector).val();
+		        		wym.paste(sText);
+								$(this).parents(".modal").modal("hide");
+							});
+						};
             break;
         case (WYMeditor.PREVIEW):
             sBodyHtml = this._options.dialogPreviewHtml;
@@ -5535,42 +5579,10 @@ WYMeditor.editor.prototype.dialog = function (dialogType, dialogFeatures, bodyHt
 				//---PAUL--- doc.write(dialogHtml);
         //---PAUL--- doc.close();
        	$("body").append(dialogHtml);
-				var wym = this;
 				$(".modal:last").modal("show").on("hidden", function(){
 					$(this).remove();
 				}).on("shown", function(){
-					var selected = wym.selected;
-			    // ensure that we select the link to populate the fields
-			    if (selected && selected.tagName &&
-			            selected.tagName.toLowerCase !== WYMeditor.A) {
-			        selected = jQuery(selected).parentsOrSelf(WYMeditor.A);
-			    }
-			    // fix MSIE selection if link image has been clicked
-			    if (!selected && wym._selected_image) {
-			        selected = jQuery(wym._selected_image).parentsOrSelf(WYMeditor.A);
-			    }
-					// FIT IN HERE TEXTS
-					$(this).find("form").submit(function(e){
-						e.preventDefault();
-						var sUrl = jQuery(wym._options.hrefSelector).val(),
-								sStamp = sStamp = wym.uniqueStamp(),
-		            link;
-		        if (sUrl.length > 0) {
-
-		            if (selected[0] && selected[0].tagName.toLowerCase() === WYMeditor.A) {
-		                link = selected;
-		            } else {
-		                wym._exec(WYMeditor.CREATE_LINK, sStamp);
-		                link = jQuery("a[href=" + sStamp + "]", wym._doc.body);
-		            }
-
-		            link.attr(WYMeditor.HREF, sUrl);
-		            //link.attr(WYMeditor.TITLE, jQuery(wym._options.titleSelector).val());
-		            //link.attr(WYMeditor.REL, jQuery(wym._options.relSelector).val());
-								link.attr("target", jQuery(wym._options.relSelector).val());
-		        }
-		        $(this).parents(".modal").modal("hide");
-					});
+					open_callback(this);
 				});
     //---PAUL---}
 };
